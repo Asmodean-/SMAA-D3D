@@ -1,31 +1,25 @@
 /**
- * Copyright (C) 2010 Jorge Jimenez (jorge@iryoku.com). All rights reserved.
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
  *
- *    1. Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
  *
- *    2. Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS
- * IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation are 
- * those of the authors and should not be interpreted as representing official
- * policies, either expressed or implied, of the copyright holders.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 
@@ -48,37 +42,37 @@ const int HUD_WIDTH = 125;
 CDXUTDialogResourceManager dialogResourceManager;
 CDXUTDialog hud;
 
-ID3DXFont *font = NULL;
+ID3DXFont *font = nullptr;
 
-Timer *timer = NULL;
-SMAA *smaa = NULL;
-IDirect3DSurface9 *backbufferSurface = NULL;
-IDirect3DTexture9 *finalbufferColorTex = NULL;
-IDirect3DSurface9 *finalbufferColorSurface = NULL;
-IDirect3DTexture9 *finalbufferDepthTex = NULL;
-IDirect3DSurface9 *finalbufferDepthSurface = NULL;
-IDirect3DTexture9 *colorTex = NULL;
-IDirect3DTexture9 *depthTex = NULL;
-ID3DXSprite *sprite = NULL;
-CDXUTTextHelper *txtHelper = NULL;
+Timer *timer = nullptr;
+SMAA *smaa = nullptr;
+IDirect3DSurface9 *backbufferSurface = nullptr;
+IDirect3DTexture9 *finalbufferColorTex = nullptr;
+IDirect3DSurface9 *finalbufferColorSurface = nullptr;
+IDirect3DTexture9 *finalbufferDepthTex = nullptr;
+IDirect3DSurface9 *finalbufferDepthSurface = nullptr;
+IDirect3DTexture9 *colorTex = nullptr;
+IDirect3DTexture9 *depthTex = nullptr;
+ID3DXSprite *sprite = nullptr;
+CDXUTTextHelper *txtHelper = nullptr;
 
 bool showHud = true;
 
-
-#define IDC_TOGGLE_FULLSCREEN 1
-#define IDC_PRESET            2
-#define IDC_DETECTION_MODE    3
-#define IDC_ANTIALIASING      4
-#define IDC_PROFILE           5
-#define IDC_THRESHOLD_LABEL             15
-#define IDC_THRESHOLD                   16
-#define IDC_MAX_SEARCH_STEPS_LABEL      17
-#define IDC_MAX_SEARCH_STEPS            18
-#define IDC_MAX_SEARCH_STEPS_DIAG_LABEL 19
-#define IDC_MAX_SEARCH_STEPS_DIAG       20
-#define IDC_CORNER_ROUNDING_LABEL       21
-#define IDC_CORNER_ROUNDING             22
-#define IDC_ENABLE_CORNER_ROUNDING      23
+enum IDC {
+    IDC_TOGGLE_FULLSCREEN,
+    IDC_PRESET,
+    IDC_DETECTION_MODE,
+    IDC_ANTIALIASING,
+    IDC_PROFILE,
+    IDC_THRESHOLD_LABEL,
+    IDC_THRESHOLD,
+    IDC_MAX_SEARCH_STEPS_LABEL,
+    IDC_MAX_SEARCH_STEPS,
+    IDC_MAX_SEARCH_STEPS_DIAG_LABEL,
+    IDC_MAX_SEARCH_STEPS_DIAG,
+    IDC_CORNER_ROUNDING_LABEL,
+    IDC_CORNER_ROUNDING,
+};
 
 struct {
     float threshold;
@@ -138,33 +132,27 @@ HRESULT CALLBACK onResetDevice(IDirect3DDevice9 *device, const D3DSURFACE_DESC *
     
     timer = new Timer(device);
     timer->setEnabled(hud.GetCheckBox(IDC_PROFILE)->GetChecked());
-    timer->setRepetitionsCount(100);
 
     SMAA::Preset preset = SMAA::Preset(int(hud.GetComboBox(IDC_PRESET)->GetSelectedData()));
-	if(int(preset) == 4)
-	{
-		setVisibleCustomControls( true);
-	} else {
-		setVisibleCustomControls(false);
-	}
     smaa = new SMAA(device, desc->Width, desc->Height, preset);
+    setVisibleCustomControls(preset == SMAA::PRESET_CUSTOM);
 
     V(device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbufferSurface));
 
-    V(device->CreateTexture(desc->Width, desc->Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &finalbufferColorTex, NULL));
+    V(device->CreateTexture(desc->Width, desc->Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &finalbufferColorTex, nullptr));
     V(finalbufferColorTex->GetSurfaceLevel(0, &finalbufferColorSurface));
 
-    V(device->CreateTexture(desc->Width, desc->Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &finalbufferDepthTex, NULL));
+    V(device->CreateTexture(desc->Width, desc->Height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &finalbufferDepthTex, nullptr));
     V(finalbufferDepthTex->GetSurfaceLevel(0, &finalbufferDepthSurface));
 
     D3DXIMAGE_INFO info;
-    V(D3DXGetImageInfoFromResource(NULL, L"Unigine02.png", &info));
-    V(D3DXCreateTextureFromResourceEx(device, NULL, L"Unigine02.png", info.Width, info.Height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, D3DX_FILTER_NONE, D3DX_FILTER_NONE, 0, &info, NULL, &colorTex));
-    V(D3DXGetImageInfoFromResource(NULL, L"Unigine02.dds", &info));
-    V(D3DXCreateTextureFromResourceEx(device, NULL, L"Unigine02.dds", info.Width, info.Height, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, D3DX_FILTER_NONE, D3DX_FILTER_NONE, 0, &info, NULL, &depthTex));
+    V(D3DXGetImageInfoFromResource(nullptr, L"Unigine02.png", &info));
+    V(D3DXCreateTextureFromResourceEx(device, nullptr, L"Unigine02.png", info.Width, info.Height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, D3DX_FILTER_NONE, D3DX_FILTER_NONE, 0, &info, nullptr, &colorTex));
+    V(D3DXGetImageInfoFromResource(nullptr, L"Unigine02.dds", &info));
+    V(D3DXCreateTextureFromResourceEx(device, nullptr, L"Unigine02.dds", info.Width, info.Height, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, D3DX_FILTER_NONE, D3DX_FILTER_NONE, 0, &info, nullptr, &depthTex));
 
     V_RETURN(D3DXCreateSprite(device, &sprite));
-    txtHelper = new CDXUTTextHelper(font, sprite, NULL, NULL, 15);
+    txtHelper = new CDXUTTextHelper(font, sprite, nullptr, nullptr, 15);
 
     hud.SetLocation(desc->Width - 170, 0);
     hud.SetSize(170, 170);
@@ -222,7 +210,7 @@ void mainPass(IDirect3DDevice9 *device) {
     HRESULT hr;
 
     // A dummy copy over here.
-    IDirect3DSurface9 *colorSurface = NULL;
+    IDirect3DSurface9 *colorSurface = nullptr;
     V(colorTex->GetSurfaceLevel(0, &colorSurface));
     D3DSURFACE_DESC desc;
     colorSurface->GetDesc(&desc);
@@ -232,7 +220,7 @@ void mainPass(IDirect3DDevice9 *device) {
     SAFE_RELEASE(colorSurface);
 
     // And another one over here.
-    IDirect3DSurface9 *depthSurface = NULL;
+    IDirect3DSurface9 *depthSurface = nullptr;
     V(depthTex->GetSurfaceLevel(0, &depthSurface));
     V(device->StretchRect(depthSurface, &rect, finalbufferDepthSurface, &rect, D3DTEXF_POINT));
     SAFE_RELEASE(depthSurface);
@@ -243,7 +231,7 @@ void copy(IDirect3DDevice9 *device) {
     HRESULT hr;
 
     // A dummy copy over here.
-    IDirect3DSurface9 *colorSurface = NULL;
+    IDirect3DSurface9 *colorSurface = nullptr;
     V(colorTex->GetSurfaceLevel(0, &colorSurface));
     D3DSURFACE_DESC desc;
     colorSurface->GetDesc(&desc);
@@ -258,7 +246,7 @@ void CALLBACK onFrameRender(IDirect3DDevice9 *device, double time, float elapsed
     HRESULT hr;
 
     // IMPORTANT: stencil must be cleared to zero before executing 'smaa->go'
-    V(device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0));
+    V(device->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0));
 
     V(device->BeginScene());
         // This emulates main pass.
@@ -267,21 +255,19 @@ void CALLBACK onFrameRender(IDirect3DDevice9 *device, double time, float elapsed
         // Run SMAA
         if (hud.GetCheckBox(IDC_ANTIALIASING)->GetChecked()) {
             SMAA::Input input = SMAA::Input(int(hud.GetComboBox(IDC_DETECTION_MODE)->GetSelectedData()));
-            int n = hud.GetCheckBox(IDC_PROFILE)->GetChecked()? timer->getRepetitionsCount() : 1;
 
-            timer->start();
-            for (int i = 0; i < n; i++) { // This loop is just for profiling.
-                switch (input) {
-                    case SMAA::INPUT_LUMA:
-                    case SMAA::INPUT_COLOR:
-                        smaa->go(finalbufferColorTex, finalbufferColorTex, backbufferSurface, input);
-                        break;
-                    case SMAA::INPUT_DEPTH:
-                        smaa->go(finalbufferDepthTex, finalbufferColorTex, backbufferSurface, input);
-                        break;
-                }
+            timer->start(L"SMAA");
+            switch (input) {
+                case SMAA::INPUT_LUMA:
+                case SMAA::INPUT_COLOR:
+                    smaa->go(finalbufferColorTex, finalbufferColorTex, backbufferSurface, input);
+                    break;
+                case SMAA::INPUT_DEPTH:
+                    smaa->go(finalbufferDepthTex, finalbufferColorTex, backbufferSurface, input);
+                    break;
             }
-            timer->clock(L"SMAA");
+            timer->end(L"SMAA");
+            timer->endFrame();
         } else {
             copy(device);
         }
@@ -319,8 +305,8 @@ void CALLBACK onKeyboard(UINT nchar, bool keyDown, bool altDown, void *userConte
         case '4':
         case '5': {
             hud.GetComboBox(IDC_PRESET)->SetSelectedByIndex(nchar - '1');
-            onLostDevice(NULL);
-            onResetDevice(DXUTGetD3D9Device(), DXUTGetD3D9BackBufferSurfaceDesc(), NULL);
+            onLostDevice(nullptr);
+            onResetDevice(DXUTGetD3D9Device(), DXUTGetD3D9BackBufferSurfaceDesc(), nullptr);
             break;
         }
         case 'X':
@@ -384,8 +370,8 @@ void CALLBACK onGUIEvent(UINT event, int controlId, CDXUTControl* control, void 
             if (event == EVENT_COMBOBOX_SELECTION_CHANGED) {
                 SMAA::Preset selected;
                 selected = SMAA::Preset(int(hud.GetComboBox(IDC_PRESET)->GetSelectedData()));
-                onLostDevice(NULL);
-                onResetDevice(DXUTGetD3D9Device(), DXUTGetD3D9BackBufferSurfaceDesc(), NULL);
+                onLostDevice(nullptr);
+                onResetDevice(DXUTGetD3D9Device(), DXUTGetD3D9BackBufferSurfaceDesc(), nullptr);
             }
             break;
         case IDC_ANTIALIASING:
@@ -400,7 +386,7 @@ void CALLBACK onGUIEvent(UINT event, int controlId, CDXUTControl* control, void 
             break;
         case IDC_THRESHOLD:
             if (event == EVENT_SLIDER_VALUE_CHANGED) {
-                CDXUTSlider *slider = 	hud.GetSlider(IDC_THRESHOLD);
+                CDXUTSlider *slider = (CDXUTSlider *) control;
                 int min, max;
                 slider->GetRange(min, max);
 
@@ -414,21 +400,21 @@ void CALLBACK onGUIEvent(UINT event, int controlId, CDXUTControl* control, void 
             break;
         case IDC_MAX_SEARCH_STEPS:
             if (event == EVENT_SLIDER_VALUE_CHANGED) {
-                CDXUTSlider *slider = 	hud.GetSlider(IDC_MAX_SEARCH_STEPS);
+                CDXUTSlider *slider = (CDXUTSlider *) control;
                 int min, max;
                 slider->GetRange(min, max);
 
                 float scale = float(slider->GetValue()) / (max - min);
-                smaa->setMaxSearchSteps(int(round(scale * 98.0f)));
+                smaa->setMaxSearchSteps(int(round(scale * 112.0f)));
 
                 wstringstream s;
-                s << L"Max Search Steps: " << int(round(scale * 98.0f));
+                s << L"Max Search Steps: " << int(round(scale * 112.0f));
                 hud.GetStatic(IDC_MAX_SEARCH_STEPS_LABEL)->SetText(s.str().c_str());
             }
             break;
         case IDC_MAX_SEARCH_STEPS_DIAG:
             if (event == EVENT_SLIDER_VALUE_CHANGED) {
-                CDXUTSlider *slider = 	hud.GetSlider(IDC_MAX_SEARCH_STEPS_DIAG);
+                CDXUTSlider *slider = (CDXUTSlider *) control;
                 int min, max;
                 slider->GetRange(min, max);
 
@@ -442,7 +428,7 @@ void CALLBACK onGUIEvent(UINT event, int controlId, CDXUTControl* control, void 
             break;
         case IDC_CORNER_ROUNDING:
             if (event == EVENT_SLIDER_VALUE_CHANGED) {
-                CDXUTSlider *slider = 	hud.GetSlider(IDC_CORNER_ROUNDING);
+                CDXUTSlider *slider = (CDXUTSlider *) control;
                 int min, max;
                 slider->GetRange(min, max);
 
@@ -479,8 +465,8 @@ void initApp() {
     hud.GetComboBox(IDC_DETECTION_MODE)->AddItem(L"Color edge det.", (LPVOID) 1);
     hud.GetComboBox(IDC_DETECTION_MODE)->AddItem(L"Depth edge det.", (LPVOID) 2);
 
-    hud.AddCheckBox(IDC_ANTIALIASING, L"SMAA Anti-Aliasing", 35, iY += 24, HUD_WIDTH, 22, true);
-    hud.AddCheckBox(IDC_PROFILE, L"Profile", 35, iY += 24, 125, 22, false);
+    hud.AddCheckBox(IDC_ANTIALIASING, L"SMAA", 35, iY += 24, HUD_WIDTH, 22, true);
+    hud.AddCheckBox(IDC_PROFILE, L"Profile", 35, iY += 24, HUD_WIDTH, 22, false);
     wstringstream s;
     s << L"Threshold: " << commandlineOptions.threshold;
     hud.AddStatic(IDC_THRESHOLD_LABEL, s.str().c_str(), 35, iY += 24, HUD_WIDTH, 22);
@@ -491,7 +477,7 @@ void initApp() {
     s = wstringstream();
     s << L"Max Search Steps: " << commandlineOptions.searchSteps;
     hud.AddStatic(IDC_MAX_SEARCH_STEPS_LABEL, s.str().c_str(), 35, iY += 24, HUD_WIDTH, 22);
-    hud.AddSlider(IDC_MAX_SEARCH_STEPS, 35, iY += 24, HUD_WIDTH, 22, 0, 100, int(100.0f * commandlineOptions.searchSteps / 98.0f));
+    hud.AddSlider(IDC_MAX_SEARCH_STEPS, 35, iY += 24, HUD_WIDTH, 22, 0, 100, int(100.0f * commandlineOptions.searchSteps / 112.0f));
     hud.GetStatic(IDC_MAX_SEARCH_STEPS_LABEL)->SetVisible(false);
     hud.GetSlider(IDC_MAX_SEARCH_STEPS)->SetVisible(false);
 
@@ -508,7 +494,6 @@ void initApp() {
     hud.AddSlider(IDC_CORNER_ROUNDING, 35, iY += 24, HUD_WIDTH, 22, 0, 100, int(100.0f * commandlineOptions.cornerRounding / 100.0f));
     hud.GetStatic(IDC_CORNER_ROUNDING_LABEL)->SetVisible(false);
     hud.GetSlider(IDC_CORNER_ROUNDING)->SetVisible(false);
-	
 }
 
 
@@ -541,6 +526,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
 
     if (FAILED(DXUTCreateDevice(true, 1280, 720)))
         return -1;
+
+    /**
+     * See <WINDOW_FIX> in DXUT.h
+     */
+    ShowWindow(DXUTGetHWND(), SW_SHOW);
 
     DXUTMainLoop();
 

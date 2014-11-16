@@ -1,39 +1,61 @@
 /**
- * Copyright (C) 2010 Jorge Jimenez (jorge@iryoku.com). All rights reserved.
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
  *
- *    1. Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
  *
- *    2. Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS
- * IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation are 
- * those of the authors and should not be interpreted as representing official
- * policies, either expressed or implied, of the copyright holders.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 
-#include <DXUT.h>
 #include <string>
 #include <d3d9.h>
 #include "Copy.h"
 using namespace std;
+
+
+#pragma region Useful Macros from DXUT (copy-pasted here as we prefer this to be as self-contained as possible)
+#if defined(DEBUG) || defined(_DEBUG)
+#ifndef V
+#define V(x) { hr = (x); if (FAILED(hr)) { DXTrace(__FILE__, (DWORD)__LINE__, hr, L#x, true); } }
+#endif
+#ifndef V_RETURN
+#define V_RETURN(x) { hr = (x); if (FAILED(hr)) { return DXTrace(__FILE__, (DWORD)__LINE__, hr, L#x, true); } }
+#endif
+#else
+#ifndef V
+#define V(x) { hr = (x); }
+#endif
+#ifndef V_RETURN
+#define V_RETURN(x) { hr = (x); if( FAILED(hr) ) { return hr; } }
+#endif
+#endif
+
+#ifndef SAFE_DELETE
+#define SAFE_DELETE(p) { if (p) { delete (p); (p) = nullptr; } }
+#endif
+#ifndef SAFE_DELETE_ARRAY
+#define SAFE_DELETE_ARRAY(p) { if (p) { delete[] (p); (p) = nullptr; } }
+#endif
+#ifndef SAFE_RELEASE
+#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
+#endif
+#pragma endregion
 
 
 ID3D10Device *Copy::device;
@@ -57,7 +79,7 @@ void Copy::init(ID3D10Device *device) {
                "}}";
 
     HRESULT hr;
-    V(D3DX10CreateEffectFromMemory(s.c_str(), s.length(), NULL, NULL, NULL, "fx_4_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, device, NULL, NULL, &effect, NULL, NULL));
+    V(D3DX10CreateEffectFromMemory(s.c_str(), s.length(), nullptr, nullptr, nullptr, "fx_4_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, device, nullptr, nullptr, &effect, nullptr, nullptr));
 
     D3D10_PASS_DESC desc;
     V(effect->GetTechniqueByName("Copy")->GetPassByIndex(0)->GetDesc(&desc));
@@ -72,23 +94,21 @@ void Copy::release() {
 
 
 void Copy::go(ID3D10ShaderResourceView *srcSRV, ID3D10RenderTargetView *dstRTV, D3D10_VIEWPORT *viewport) {
-    D3DPERF_BeginEvent(D3DCOLOR_XRGB(0, 0, 0), L"Copy");
+    PerfEventScope perfEvent(L"Copy");
 
     SaveViewportsScope saveViewport(device);
     SaveRenderTargetsScope saveRenderTargets(device);
     SaveInputLayoutScope saveInputLayout(device);
 
     D3D10_VIEWPORT dstViewport = Utils::viewportFromView(dstRTV);
-    device->RSSetViewports(1, viewport != NULL? viewport : &dstViewport);
+    device->RSSetViewports(1, viewport != nullptr? viewport : &dstViewport);
 
     quad->setInputLayout();
     
     HRESULT hr;
     V(effect->GetVariableByName("tex")->AsShaderResource()->SetResource(srcSRV));
     V(effect->GetTechniqueByName("Copy")->GetPassByIndex(0)->Apply(0));
-    device->OMSetRenderTargets(1, &dstRTV, NULL);
+    device->OMSetRenderTargets(1, &dstRTV, nullptr);
     quad->draw();
-    device->OMSetRenderTargets(0, NULL, NULL);
-
-    D3DPERF_EndEvent();
+    device->OMSetRenderTargets(0, nullptr, nullptr);
 }

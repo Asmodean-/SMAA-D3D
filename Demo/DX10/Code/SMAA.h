@@ -1,39 +1,29 @@
 /**
- * Copyright (C) 2011 Jorge Jimenez (jorge@iryoku.com)
- * Copyright (C) 2011 Belen Masia (bmasia@unizar.es) 
- * Copyright (C) 2011 Jose I. Echevarria (joseignacioechevarria@gmail.com) 
- * Copyright (C) 2011 Fernando Navarro (fernandn@microsoft.com) 
- * Copyright (C) 2011 Diego Gutierrez (diegog@unizar.es)
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- * 
- *    1. Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- * 
- *    2. Redistributions in binary form must reproduce the following disclaimer
- *       in the documentation and/or other materials provided with the 
- *       distribution:
- * 
- *      "Uses SMAA. Copyright (C) 2011 by Jorge Jimenez, Jose I. Echevarria,
- *       Belen Masia, Fernando Navarro and Diego Gutierrez."
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS 
- * IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR CONTRIBUTORS 
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
- * POSSIBILITY OF SUCH DAMAGE.
- * 
- * The views and conclusions contained in the software and documentation are 
- * those of the authors and should not be interpreted as representing official
- * policies, either expressed or implied, of the copyright holders.
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
+ * Copyright (C) 2013 Jose I. Echevarria (joseignacioechevarria@gmail.com)
+ * Copyright (C) 2013 Belen Masia (bmasia@unizar.es)
+ * Copyright (C) 2013 Fernando Navarro (fernandn@microsoft.com)
+ * Copyright (C) 2013 Diego Gutierrez (diegog@unizar.es)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 
@@ -56,9 +46,9 @@ class SMAA {
     public:
         class ExternalStorage;
 
-        enum Mode { MODE_SMAA_1X, MODE_SMAA_T2X, MODE_SMAA_S2X, MODE_SMAA_4X };
-        enum Preset { PRESET_LOW, PRESET_MEDIUM, PRESET_HIGH, PRESET_ULTRA, PRESET_CUSTOM };
-        enum Input { INPUT_LUMA, INPUT_COLOR, INPUT_DEPTH };
+        enum Mode { MODE_SMAA_1X, MODE_SMAA_T2X, MODE_SMAA_S2X, MODE_SMAA_4X, MODE_SMAA_COUNT=MODE_SMAA_4X };
+        enum Preset { PRESET_LOW, PRESET_MEDIUM, PRESET_HIGH, PRESET_ULTRA, PRESET_CUSTOM, PRESET_COUNT=PRESET_CUSTOM };
+        enum Input { INPUT_LUMA, INPUT_COLOR, INPUT_DEPTH, INPUT_COUNT=INPUT_DEPTH };
 
         /**
          * By default, two render targets will be created for storing
@@ -66,7 +56,7 @@ class SMAA {
          * search for @EXTERNAL_STORAGE.
          */
         SMAA(ID3D10Device *device, int width, int height, 
-             Preset preset=PRESET_HIGH, bool predication=false, bool reprojection=false,
+             Preset preset=PRESET_HIGH, bool predication=false, bool reprojection=false, const DXGI_ADAPTER_DESC *adapterDesc=NULL,
              const ExternalStorage &storage=ExternalStorage());
         ~SMAA();
 
@@ -74,9 +64,9 @@ class SMAA {
          * Mandatory input textures varies depending on 'input':
          *    INPUT_LUMA:
          *    INPUT_COLOR:
-         *        go(srcGammaSRV, srcSRV, NULL,     depthSRV, dsv)
+         *        go(srcGammaSRV, srcSRV, nullptr,  depthSRV, dsv)
          *    INPUT_DEPTH:
-         *        go(NULL,        srcSRV, depthSRV, depthSRV, dsv)
+         *        go(nullptr,     srcSRV, depthSRV, depthSRV, dsv)
          *
          * You can safely pass everything (do not use NULLs) if you want, the
          * extra paramters will be ignored accordingly. See descriptions below.
@@ -97,12 +87,12 @@ class SMAA {
         void go(ID3D10ShaderResourceView *srcGammaSRV, // Non-SRGB version of the input color texture.
                 ID3D10ShaderResourceView *srcSRV, // SRGB version of the input color texture.
                 ID3D10ShaderResourceView *depthSRV, // Input depth texture.
+                ID3D10ShaderResourceView *velocitySRV, // Input velocity texture, if reproject is going to be called later on, nullptr otherwise.
                 ID3D10RenderTargetView *dstRTV, // Output render target.
                 ID3D10DepthStencilView *dsv, // Depth-stencil buffer for optimizations.
                 Input input, // Selects the input for edge detection.
                 Mode mode=MODE_SMAA_1X, // Selects the SMAA mode.
-                int subsampleIndex=0, // See SMAA.h (in the root directory)
-                float blendFactor=1.0f); // Allows to blend with the output render target.
+                int pass=0); // Selects the S2x or 4x pass (either 0 or 1).
 
         /**
          * This function perform a temporal resolve of two buffers. They must
@@ -127,6 +117,12 @@ class SMAA {
          * See related SMAA::detectMSAAOrder.
          */
         int msaaReorder(int sample) const { return msaaOrderMap[sample]; }
+
+        /**
+         * Gets the render target size the object operates on.
+         */
+        int getWidth() const { return width; }
+        int getHeight() const { return height; }
 
         /**
          * Threshold for the edge detection. Only has effect if PRESET_CUSTOM
@@ -163,6 +159,17 @@ class SMAA {
         RenderTarget *getBlendRenderTarget() { return blendRT; }
 
         /**
+         * Jitters the transformations matrix.
+         */
+        D3DXMATRIX JitteredMatrix(const D3DXMATRIX &worldViewProjection, Mode mode) const;
+
+        /**
+         * Increases the subpixel counter.
+         */
+        void nextFrame();
+        int getFrameIndex() const { return frameIndex; }
+
+        /**
          * @EXTERNAL_STORAGE
          *
          * If you have one or two spare render targets of the same size as the
@@ -175,10 +182,10 @@ class SMAA {
          */
         class ExternalStorage {
             public:
-                ExternalStorage(ID3D10ShaderResourceView *edgesSRV=NULL,
-                                ID3D10RenderTargetView *edgesRTV=NULL,
-                                ID3D10ShaderResourceView *weightsSRV=NULL,
-                                ID3D10RenderTargetView *weightsRTV=NULL)
+                ExternalStorage(ID3D10ShaderResourceView *edgesSRV=nullptr,
+                                ID3D10RenderTargetView *edgesRTV=nullptr,
+                                ID3D10ShaderResourceView *weightsSRV=nullptr,
+                                ID3D10RenderTargetView *weightsRTV=nullptr)
                     : edgesSRV(edgesSRV),
                       edgesRTV(edgesRTV), 
                       weightsSRV(weightsSRV),
@@ -198,6 +205,9 @@ class SMAA {
          */
         void detectMSAAOrder();
 
+        D3DXVECTOR2 getJitter(Mode mode) const;
+        int getSubsampleIndex(Mode mode, int pass) const;
+
         void loadAreaTex();
         void loadSearchTex();
         void edgesDetectionPass(ID3D10DepthStencilView *dsv, Input input);
@@ -205,9 +215,10 @@ class SMAA {
         void neighborhoodBlendingPass(ID3D10RenderTargetView *dstRTV, ID3D10DepthStencilView *dsv);
 
         ID3D10Device *device;
+        int width, height;
         Preset preset;
         ID3D10Effect *effect;
-        Quad *quad;
+        FullscreenTriangle *triangle;
 
         RenderTarget *edgesRT;
         RenderTarget *blendRT;
@@ -222,7 +233,7 @@ class SMAA {
                                    *blendFactorVariable;
         ID3D10EffectVectorVariable *subsampleIndicesVariable;
         ID3D10EffectShaderResourceVariable *areaTexVariable, *searchTexVariable,
-                                           *colorTexVariable, *colorTexGammaVariable, *colorTexPrevVariable, *colorMSTexVariable,
+                                           *colorTexVariable, *colorTexGammaVariable, *colorTexPrevVariable, *colorTexMSVariable,
                                            *depthTexVariable, *velocityTexVariable,
                                            *edgesTexVariable, *blendTexVariable;
 
@@ -235,6 +246,7 @@ class SMAA {
         float threshold, cornerRounding;
         int maxSearchSteps, maxSearchStepsDiag;
 
+        int frameIndex;
         int msaaOrderMap[2];
 };
 

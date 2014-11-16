@@ -1,110 +1,103 @@
 /**
- * Copyright (C) 2010 Jorge Jimenez (jorge@iryoku.com). All rights reserved.
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
  *
- *    1. Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
  *
- *    2. Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS
- * IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation are 
- * those of the authors and should not be interpreted as representing official
- * policies, either expressed or implied, of the copyright holders.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
-
 
 #ifndef TIMER_H
 #define TIMER_H
 
 #include <iostream>
-#include <string>
 #include <map>
-#include <vector>
-
-
-#ifdef TIMER_DIRECTX_9
+#include <string>
+#if TIMER_DIRECTX_9
 #include <d3d9.h>
 #else
-#include <d3d10.h>
+#include <d3d10_1.h>
 #endif
-#include <dxerr.h>
 
 
 class Timer {
     public:
-        #ifdef TIMER_DIRECTX_9
-        Timer(IDirect3DDevice9 *device);
+        #if TIMER_DIRECTX_9
+        Timer(IDirect3DDevice9 *device, bool enabled=true) :
         #else
-        Timer(ID3D10Device *device);
+        Timer(ID3D10Device *device, bool enabled=true) :
         #endif
-        ~Timer();
+            device(device),
+            enabled(enabled),
+            windowPos(0) { }
+        ~Timer() { reset(); }
 
-        void reset() { sections.clear(); }
-        void start();
-        float clock(const std::wstring &msg=L"");
-        float accumulated() const { return accum; }
+        void reset() {
+            for (auto iter = sections.begin(); iter != sections.end(); iter++)
+                if (iter->second != nullptr) delete iter->second;
+            sections.clear();
+        }
 
-        void sleep(float ms);
+        void start(const std::wstring &name=L"");
+        void end(const std::wstring &name=L"");
+        void endFrame();
 
         void setEnabled(bool enabled) { this->enabled = enabled; }
         bool isEnabled() const { return enabled; }
 
-        void setFlushEnabled(bool flushEnabled) { this->flushEnabled = flushEnabled; }
-        bool isFlushEnabled() const { return flushEnabled; }
-
-        void setWindowSize(int windowSize) { this->windowSize = windowSize; }
-        int getWindowSize() const { return windowSize; }
-
-        void setRepetitionsCount(int repetitionCount) { this->repetitionCount = repetitionCount; }
-        int getRepetitionsCount() const { return repetitionCount; }
-
-        float getSection(const std::wstring &name) { return 1000.0f * sections[name].mean / repetitionCount; }
-
-        friend std::wostream &operator<<(std::wostream &out, const Timer &timer);
+        friend std::wostream &operator<<(std::wostream &out, Timer &timer);
 
     private:
-        float mean(const std::wstring &msg, float t);
-        void flush();
+        static const int WindowSize = 120;
 
-        #ifdef TIMER_DIRECTX_9
-        IDirect3DQuery9 *event;
+        #if TIMER_DIRECTX_9
+        IDirect3DDevice9 *device;
         #else
-        ID3D10Query *event;
+        ID3D10Device *device;
         #endif
 
-        __int64 t0;
-        float accum;
-
         bool enabled;
-        bool flushEnabled;
-        int windowSize;
-        int repetitionCount;
+        int windowPos;
 
         class Section {
             public:
-                Section() : mean(0.0), pos(0), completed(0.0f) {}
-                std::vector<std::pair<float, bool> > buffer;
-                float mean;
-                int pos;
-                float completed;
+                #if TIMER_DIRECTX_9
+                Section(IDirect3DDevice9 *device);
+                #else
+                Section(ID3D10Device *device);
+                #endif
+                ~Section();
+
+                #if TIMER_DIRECTX_9
+                IDirect3DQuery9 *disjointQuery[WindowSize];
+                IDirect3DQuery9 *timestampStartQuery[WindowSize];
+                IDirect3DQuery9 *timestampEndQuery[WindowSize];
+                IDirect3DQuery9 *timestampFrequencyQuery[WindowSize];
+                #else
+                ID3D10Query *disjointQuery[WindowSize];
+                ID3D10Query *timestampStartQuery[WindowSize];
+                ID3D10Query *timestampEndQuery[WindowSize];
+                #endif
+
+                float time[WindowSize];
+                bool finished[WindowSize];
         };
-        std::map<std::wstring, Section> sections;
+        std::map<std::wstring, Section*> sections;
 };
 
 #endif

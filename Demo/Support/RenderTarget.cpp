@@ -1,31 +1,25 @@
 /**
- * Copyright (C) 2010 Jorge Jimenez (jorge@iryoku.com). All rights reserved.
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
  *
- *    1. Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
  *
- *    2. Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS
- * IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation are 
- * those of the authors and should not be interpreted as representing official
- * policies, either expressed or implied, of the copyright holders.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 
@@ -52,13 +46,13 @@ using namespace std;
 #endif
 
 #ifndef SAFE_DELETE
-#define SAFE_DELETE(p) { if (p) { delete (p); (p) = NULL; } }
+#define SAFE_DELETE(p) { if (p) { delete (p); (p) = nullptr; } }
 #endif
 #ifndef SAFE_DELETE_ARRAY
-#define SAFE_DELETE_ARRAY(p) { if (p) { delete[] (p); (p) = NULL; } }
+#define SAFE_DELETE_ARRAY(p) { if (p) { delete[] (p); (p) = nullptr; } }
 #endif
 #ifndef SAFE_RELEASE
-#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = NULL; } }
+#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
 #endif
 #pragma endregion
 
@@ -77,7 +71,7 @@ RenderTarget::RenderTarget(ID3D10Device *device, int width, int height, DXGI_FOR
     desc.SampleDesc = sampleDesc;
     desc.Usage = D3D10_USAGE_DEFAULT;
     desc.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
-    V(device->CreateTexture2D(&desc, NULL, &texture2D));
+    V(device->CreateTexture2D(&desc, nullptr, &texture2D));
     
     createViews(device, desc, format);
 }
@@ -207,7 +201,7 @@ DepthStencil::DepthStencil(ID3D10Device *device, int width, int height, DXGI_FOR
     } else {
         desc.BindFlags = D3D10_BIND_DEPTH_STENCIL;
     }
-    V(device->CreateTexture2D(&desc, NULL, &texture2D));
+    V(device->CreateTexture2D(&desc, nullptr, &texture2D));
 
     D3D10_DEPTH_STENCIL_VIEW_DESC dsdesc;
     dsdesc.Format = depthStencilViewFormat;
@@ -227,7 +221,7 @@ DepthStencil::DepthStencil(ID3D10Device *device, int width, int height, DXGI_FOR
         srdesc.Texture2D.MipLevels = 1;
         V(device->CreateShaderResourceView(texture2D, &srdesc, &shaderResourceView));
     } else {
-        shaderResourceView = NULL;
+        shaderResourceView = nullptr;
     }
 }
 
@@ -284,7 +278,7 @@ BackbufferRenderTarget::~BackbufferRenderTarget() {
 }
 
 
-struct FSVertex{
+struct Vertex {
     D3DXVECTOR3 position;
     D3DXVECTOR2 texcoord;
 };
@@ -292,32 +286,32 @@ struct FSVertex{
 
 Quad::Quad(ID3D10Device *device, const D3D10_PASS_DESC &desc) 
         : device(device) {
-    D3D10_BUFFER_DESC BufDesc;
-    D3D10_SUBRESOURCE_DATA SRData;
-    FSVertex vertices[4];
+    D3D10_BUFFER_DESC bufferDesc;
+    D3D10_SUBRESOURCE_DATA data;
+    Vertex vertices[4];
 
     vertices[0].position = D3DXVECTOR3(-1.0f, -1.0f, 1.0f);
     vertices[1].position = D3DXVECTOR3(-1.0f,  1.0f, 1.0f);
     vertices[2].position = D3DXVECTOR3( 1.0f, -1.0f, 1.0f);
     vertices[3].position = D3DXVECTOR3( 1.0f,  1.0f, 1.0f);
 
-    vertices[0].texcoord = D3DXVECTOR2(0, 1);
-    vertices[1].texcoord = D3DXVECTOR2(0, 0);
-    vertices[2].texcoord = D3DXVECTOR2(1, 1);
-    vertices[3].texcoord = D3DXVECTOR2(1, 0);
+    vertices[0].texcoord = D3DXVECTOR2(0.0f, 1.0f);
+    vertices[1].texcoord = D3DXVECTOR2(0.0f, 0.0f);
+    vertices[2].texcoord = D3DXVECTOR2(1.0f, 1.0f);
+    vertices[3].texcoord = D3DXVECTOR2(1.0f, 0.0f);
 
-    BufDesc.ByteWidth = sizeof(FSVertex) * 4;
-    BufDesc.Usage = D3D10_USAGE_DEFAULT;
-    BufDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-    BufDesc.CPUAccessFlags = 0;
-    BufDesc.MiscFlags = 0;
+    bufferDesc.ByteWidth = sizeof(Vertex) * 4;
+    bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+    bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+    bufferDesc.CPUAccessFlags = 0;
+    bufferDesc.MiscFlags = 0;
 
-    SRData.pSysMem = vertices;
-    SRData.SysMemPitch = 0;
-    SRData.SysMemSlicePitch = 0;
+    data.pSysMem = vertices;
+    data.SysMemPitch = 0;
+    data.SysMemSlicePitch = 0;
 
     HRESULT hr;
-    V(device->CreateBuffer(&BufDesc, &SRData, &buffer));
+    V(device->CreateBuffer(&bufferDesc, &data, &buffer));
 
     const D3D10_INPUT_ELEMENT_DESC layout[] = {
         { "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D10_APPEND_ALIGNED_ELEMENT, D3D10_INPUT_PER_VERTEX_DATA, 0 },
@@ -337,15 +331,67 @@ Quad::~Quad() {
 
 void Quad::draw() {
     const UINT offset = 0;
-    const UINT stride = sizeof(FSVertex);
+    const UINT stride = sizeof(Vertex);
     device->IASetVertexBuffers(0, 1, &buffer, &stride, &offset);
     device->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     device->Draw(4, 0);
 }
 
 
+FullscreenTriangle::FullscreenTriangle(ID3D10Device *device, const D3D10_PASS_DESC &desc) 
+        : device(device) {
+    D3D10_BUFFER_DESC bufferDesc;
+    D3D10_SUBRESOURCE_DATA data;
+    Vertex vertices[3];
+
+    vertices[0].position = D3DXVECTOR3(-1.0f, -1.0f, 1.0f);
+    vertices[1].position = D3DXVECTOR3(-1.0f,  3.0f, 1.0f);
+    vertices[2].position = D3DXVECTOR3( 3.0f, -1.0f, 1.0f);
+
+    vertices[0].texcoord = D3DXVECTOR2(0.0f,  1.0f);
+    vertices[1].texcoord = D3DXVECTOR2(0.0f, -1.0f);
+    vertices[2].texcoord = D3DXVECTOR2(2.0f,  1.0f);
+
+    bufferDesc.ByteWidth = sizeof(Vertex) * 3;
+    bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+    bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+    bufferDesc.CPUAccessFlags = 0;
+    bufferDesc.MiscFlags = 0;
+
+    data.pSysMem = vertices;
+    data.SysMemPitch = 0;
+    data.SysMemSlicePitch = 0;
+
+    HRESULT hr;
+    V(device->CreateBuffer(&bufferDesc, &data, &buffer));
+
+    const D3D10_INPUT_ELEMENT_DESC layout[] = {
+        { "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D10_APPEND_ALIGNED_ELEMENT, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD",  0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D10_APPEND_ALIGNED_ELEMENT, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+    };
+    UINT numElements = sizeof(layout) / sizeof(D3D10_INPUT_ELEMENT_DESC);
+
+    V(device->CreateInputLayout(layout, numElements, desc.pIAInputSignature, desc.IAInputSignatureSize, &vertexLayout));
+}
+
+
+FullscreenTriangle::~FullscreenTriangle() {
+    SAFE_RELEASE(buffer);
+    SAFE_RELEASE(vertexLayout);
+}
+
+
+void FullscreenTriangle::draw() {
+    const UINT offset = 0;
+    const UINT stride = sizeof(Vertex);
+    device->IASetVertexBuffers(0, 1, &buffer, &stride, &offset);
+    device->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    device->Draw(3, 0);
+}
+
+
 SaveViewportsScope::SaveViewportsScope(ID3D10Device *device) : device(device), numViewports(0) {
-    device->RSGetViewports(&numViewports, NULL);
+    device->RSGetViewports(&numViewports, nullptr);
     if (numViewports > 0) {
         viewports.resize(numViewports);
         device->RSGetViewports(&numViewports, &viewports.front());
@@ -417,7 +463,7 @@ ID3D10Texture2D *Utils::createStagingTexture(ID3D10Device *device, ID3D10Texture
     texdesc.CPUAccessFlags = D3D10_CPU_ACCESS_READ;
 
     ID3D10Texture2D *stagingTexture;
-    V(device->CreateTexture2D(&texdesc, NULL, &stagingTexture));
+    V(device->CreateTexture2D(&texdesc, nullptr, &stagingTexture));
     return stagingTexture;
 }
 

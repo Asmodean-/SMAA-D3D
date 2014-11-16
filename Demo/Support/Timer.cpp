@@ -1,35 +1,31 @@
 /**
- * Copyright (C) 2010 Jorge Jimenez (jorge@iryoku.com). All rights reserved.
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
  *
- *    1. Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
  *
- *    2. Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS
- * IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation are 
- * those of the authors and should not be interpreted as representing official
- * policies, either expressed or implied, of the copyright holders.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
-
-#include "timer.h"
+#include <iomanip>
+#include <d3dx9.h>
+#include <dxerr.h>
+#include "Timer.h"
 using namespace std;
 
 
@@ -51,131 +47,158 @@ using namespace std;
 #endif
 
 #ifndef SAFE_DELETE
-#define SAFE_DELETE(p) { if (p) { delete (p); (p) = NULL; } }
+#define SAFE_DELETE(p) { if (p) { delete (p); (p) = nullptr; } }
 #endif
 #ifndef SAFE_DELETE_ARRAY
-#define SAFE_DELETE_ARRAY(p) { if (p) { delete[] (p); (p) = NULL; } }
+#define SAFE_DELETE_ARRAY(p) { if (p) { delete[] (p); (p) = nullptr; } }
 #endif
 #ifndef SAFE_RELEASE
-#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = NULL; } }
+#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
 #endif
 #pragma endregion
 
 
 #ifdef TIMER_DIRECTX_9
-Timer::Timer(IDirect3DDevice9 *device) : enabled(true), flushEnabled(true), windowSize(10), repetitionCount(1) {
+Timer::Section::Section(IDirect3DDevice9 *device) {
     HRESULT hr;
 
-    V(device->CreateQuery(D3DQUERYTYPE_EVENT, &event));
+    for (int i = 0; i < WindowSize; i++) {
+        V(device->CreateQuery(D3DQUERYTYPE_TIMESTAMPDISJOINT, &disjointQuery[i]));
+        V(device->CreateQuery(D3DQUERYTYPE_TIMESTAMP, &timestampStartQuery[i]));
+        V(device->CreateQuery(D3DQUERYTYPE_TIMESTAMP, &timestampEndQuery[i]));
+        V(device->CreateQuery(D3DQUERYTYPE_TIMESTAMPFREQ, &timestampFrequencyQuery[i]));
 
-    start();
+        finished[i] = false;
+        time[i] = -1.0f;
+    }
 }
 #else
-Timer::Timer(ID3D10Device *device) : enabled(true), flushEnabled(true), windowSize(10), repetitionCount(1) {
+Timer::Section::Section(ID3D10Device *device) {
     HRESULT hr;
 
-    D3D10_QUERY_DESC desc;
-    desc.Query = D3D10_QUERY_EVENT;
-    desc.MiscFlags = 0; 
-    V(device->CreateQuery(&desc, &event));
+    for (int i = 0; i < WindowSize; i++) {
+        D3D10_QUERY_DESC desc;
+        desc.Query = D3D10_QUERY_TIMESTAMP_DISJOINT;
+        desc.MiscFlags = 0;
+        V(device->CreateQuery(&desc, &disjointQuery[i]));
 
-    start();
+        desc.Query = D3D10_QUERY_TIMESTAMP;
+        V(device->CreateQuery(&desc, &timestampStartQuery[i]));
+        V(device->CreateQuery(&desc, &timestampEndQuery[i]));
+
+        finished[i] = false;
+        time[i] = -1.0f;
+    }
 }
 #endif
 
 
-Timer::~Timer() {
-    SAFE_RELEASE(event); 
-}
-
-
-void Timer::start() {
-    if (enabled) {
-        if (flushEnabled)
-            flush();
-
-        accum = 0.0f;
-        QueryPerformanceCounter((LARGE_INTEGER*) &t0);
+Timer::Section::~Section() {
+    for (int i = 0; i < WindowSize; i++) {
+        SAFE_RELEASE(disjointQuery[i]);
+        SAFE_RELEASE(timestampStartQuery[i]);
+        SAFE_RELEASE(timestampEndQuery[i]);
+        #ifdef TIMER_DIRECTX_9
+        SAFE_RELEASE(timestampFrequencyQuery[i]);
+        #endif
     }
 }
 
 
-float Timer::clock(const wstring &msg) {
+void Timer::start(const wstring &name) {
     if (enabled) {
-        if (flushEnabled)
-            flush();
-
-        __int64 t1, freq;
-        QueryPerformanceCounter((LARGE_INTEGER*) &t1);
-        QueryPerformanceFrequency((LARGE_INTEGER*) &freq);
-        float t = float(double(t1 - t0) / double(freq));
-
-        float m = mean(msg, t);
-        accum += m;
-
-        QueryPerformanceCounter((LARGE_INTEGER*) &t0);
-
-        return m;
-    } else {
-        return 0.0f;
+        if (sections.find(name) == sections.end())
+            sections[name] = new Section(device);
+        Section *section = sections[name];
+        #ifdef TIMER_DIRECTX_9
+        section->disjointQuery[windowPos]->Issue(D3DISSUE_BEGIN);
+        section->timestampStartQuery[windowPos]->Issue(D3DISSUE_END);
+        #else
+        section->disjointQuery[windowPos]->Begin();
+        section->timestampStartQuery[windowPos]->End();
+        #endif
     }
 }
 
 
-void Timer::sleep(float t) {
-    Sleep(max(int(1000.0f * (t - clock())), 0));
+void Timer::end(const wstring &name) {
+    if (enabled) {
+        Section *section = sections[name];
+        #ifdef TIMER_DIRECTX_9
+        section->timestampEndQuery[windowPos]->Issue(D3DISSUE_END);
+        section->timestampFrequencyQuery[windowPos]->Issue(D3DISSUE_END);
+        section->disjointQuery[windowPos]->Issue(D3DISSUE_END);
+        #else
+        section->timestampEndQuery[windowPos]->End();
+        section->disjointQuery[windowPos]->End();
+        #endif
+        section->finished[windowPos] = true;
+    }
 }
 
 
-float Timer::mean(const std::wstring &msg, float t) {
-    Section &section = sections[msg];
-    if (windowSize > 1) {
-        section.buffer.resize(windowSize, make_pair(0.0f, false));
-        section.buffer[(section.pos++) % windowSize] = make_pair(t, true);
+void Timer::endFrame() {
+    windowPos = (windowPos + 1) % WindowSize;
 
-        section.mean = 0.0;
-        float n = 0;
-        for (int i = 0; i < int(section.buffer.size()); i++) {
-            pair<float, bool> val = section.buffer[i];
-            if (val.second) {
-                section.mean += val.first;
-                n++;
-            }
+    for (auto iter = sections.begin(); iter != sections.end(); iter++) {
+        Timer::Section *section = iter->second;
+
+        if (!section->finished[windowPos])
+            continue;
+
+        UINT64 startTime;
+        while (section->timestampStartQuery[windowPos]->GetData(&startTime, sizeof(startTime), 0) != S_OK);
+
+        UINT64 endTime;
+        while (section->timestampEndQuery[windowPos]->GetData(&endTime, sizeof(endTime), 0) != S_OK);
+
+        BOOL disjoint;
+        float frequency;
+        #ifdef TIMER_DIRECTX_9
+        UINT64 temp;
+        while (section->timestampFrequencyQuery[windowPos]->GetData(&temp, sizeof(temp), 0) != S_OK);
+        frequency = float(temp);
+
+        while (section->disjointQuery[windowPos]->GetData(&disjoint, sizeof(disjoint), 0) != S_OK);
+        #else
+        D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
+        while (section->disjointQuery[windowPos]->GetData(&disjointData, sizeof(disjointData), 0) != S_OK);
+        disjoint = disjointData.Disjoint;
+        frequency = float(disjointData.Frequency);
+        #endif
+
+        if (!disjoint) {
+            UINT64 delta = endTime - startTime;
+            section->time[windowPos] = 1000.0f * (delta / frequency);
+        } else {
+            section->time[windowPos] = -1.0f;
         }
-        section.mean /= n;
-
-        if (section.completed < 1.0f)
-            section.completed = float(section.pos - 1) / windowSize;
-
-        return section.mean;
-    } else {
-        section.mean = t;
-        return section.mean;
     }
 }
 
 
-void Timer::flush() {
-    #ifdef TIMER_DIRECTX_9
-    event->Issue(D3DISSUE_END);
-    while (event->GetData(NULL, 0, D3DGETDATA_FLUSH) == S_FALSE);
-    #else
-    event->End();
+wostream &operator<<(wostream &out, Timer &timer) {
+    if (timer.enabled) {
+        for (auto iter = timer.sections.begin(); iter != timer.sections.end(); iter++) {
+            const wstring &name = iter->first;
+            Timer::Section *section = iter->second;
 
-    BOOL queryData;
-    while (event->GetData(&queryData, sizeof(BOOL), 0) != S_OK);
-    #endif
-}
+            float mean = 0.0f;
+            int n = 0;
+            for (int i = 0; i < Timer::WindowSize; i++) {
+                if (section->time[i] >= 0.0f) {
+                    mean += section->time[i];
+                    n++;
+                }
+            }
+            mean /= float(n);
 
-
-wostream &operator<<(wostream &out, const Timer &timer) { 
-    for (std::map<std::wstring, Timer::Section>::const_iterator section = timer.sections.begin();
-         section != timer.sections.end();
-         section++) {
-        const wstring &name = section->first;
-        float mean = section->second.mean / timer.repetitionCount;
-        float accum = timer.accum / timer.repetitionCount;
-        out << name << L" : " << 1000.0f * mean << L"ms : " << int(100.0f * mean / accum) << L"% : " << int(1.0 / mean) << L"fps [" << int(100.0f * section->second.completed) << L"%]" << endl;
+            out << setprecision(3) << name << L": ";
+            if (n > 0)
+                out << mean << L"ms" << endl;
+            else
+                out << "n/a" << endl;
+        }
     }
     return out;
 }

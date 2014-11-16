@@ -1,37 +1,30 @@
 /**
- * Copyright (C) 2010 Jorge Jimenez (jorge@iryoku.com). All rights reserved.
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
  *
- *    1. Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
  *
- *    2. Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS
- * IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation are 
- * those of the authors and should not be interpreted as representing official
- * policies, either expressed or implied, of the copyright holders.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 // For reprojection:
 matrix currWorldViewProj;
 matrix prevWorldViewProj;
-float2 jitter;
 
 
 // For shading:
@@ -84,22 +77,11 @@ SimpleV2P SimpleVS(float4 position : POSITION,
     output.currPosition = output.svPosition.xyw;
     output.prevPosition = mul(position, prevWorldViewProj).xyw;
 
-    // Covert the jitter from non-homogeneous coordiantes to homogeneous
-    // coordinates and add it:
-    // (note that for providing the jitter in non-homogeneous projection space,
-    //  pixel coordinates (screen space) need to multiplied by two in the C++
-    //  code)
-    output.svPosition.xy -= jitter * output.svPosition.w;
-
     // Positions in projection space are in [-1, 1] range, while texture
     // coordinates are in [0, 1] range. So, we divide by 2 to get velocities in
-    // the scale:
-    output.currPosition.xy /= 2.0;
-    output.prevPosition.xy /= 2.0;
-
-    // Texture coordinates have a top-to-bottom y axis, so flip this axis:
-    output.currPosition.y = -output.currPosition.y;
-    output.prevPosition.y = -output.prevPosition.y;
+    // the scale (and flip the y axis):
+    output.currPosition.xy *= float2(0.5, -0.5);
+    output.prevPosition.xy *= float2(0.5, -0.5);
 
     // Output texture coordinates:
     output.texcoord = texcoord;
@@ -169,14 +151,10 @@ float4 SimplePS(SimpleV2P input,
     // Calculate velocity in non-homogeneous projection space:
     velocity = input.currPosition.xy - input.prevPosition.xy;
 
-    // Compress the velocity for storing it in a 8-bit render target:
-    float velocityLength = sqrt(5.0 * length(velocity));
-
     // Shade the pixel:
     float3 color = shading? Shade(input) : 0.5;
 
-    // Output the results, packing the velocity length in the alpha channel:
-    return float4(color, velocityLength);
+    return float4(color, 1.0);
 }
 
 
