@@ -50,7 +50,7 @@
  *
  * The shader has three passes, chained together as follows:
  *
- *                           |input|------------------·
+ *                           |input|------------------Â·
  *                              v                     |
  *                    [ SMAA*EdgeDetection ]          |
  *                              v                     |
@@ -60,7 +60,7 @@
  *                              v                     |
  *                          |blendTex|                |
  *                              v                     |
- *                [ SMAANeighborhoodBlending ] <------·
+ *                [ SMAANeighborhoodBlending ] <------Â·
  *                              v
  *                           |output|
  *
@@ -300,6 +300,8 @@
  * Note that if you use one of these presets, the following configuration
  * macros will be ignored if set in the "Configurable Defines" section.
  */
+ 
+ #define API_USED
 
 #if defined(SMAA_PRESET_LOW)
 #define SMAA_THRESHOLD 0.15
